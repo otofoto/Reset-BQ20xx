@@ -1,0 +1,27 @@
+ Apart from the utils tailored specifically for the BQ2092 or the BQ2040, there's the generic "eeprom" program (taken from the lm_sensors package) that can be used for reading and writing of any 24cXX i2c EEPROM (24C01 through 24C16), not only in smart batteries but in general.
+Speaking of smart batteries, the eeprom util can be used for playing with other gas gauge IC's apart from the two aforementioned models, even with undocumented ones - the only condition is that the gas gauge IC is using an external 24cXX series serial flash EEPROM. This external EEPROM never stores executable code (not even with general-purpose MCU's) - it's barely large enough to hold some callibration parameters and runtime variables that need to be non-volatile. These can be hacked.
+The BQ family of gas gauge chips (and probably others) feature two busses that can be tapped: the external SMBus available in the battery connector, and the internal I2C for communication with the Flash EEPROM.
+The wiring is almost identical
+
+WARNINGS:
+
+    Please note that the software alone will not revive your battery. The software is just a helper, intended to reset the gas gauge IC when the worn battery cells are replaced with new ones. I.e., before or while trying the software, to revive your battery for real, you still need to replace the battery cells!
+    The software and procedures presented are a bunch of hacks, not guaranteed to work for everyone or anyone.
+    The SBS standard doesn't specify a standard way to reset the gas-gauge IC upon battery refurbishment. In practise, the reset procedure is different with different chips - some chips are not documented at all (apart from compliance to the SBS spec), some have a documented way to reset the chip, with some chips the documented reset method doesn't work. The morale is: Don't use the reset utils dedicated for a particular chip with different chips! If you do, you can nuke your gas gauge chip!
+    The i2c "interface" is using the parallel port hardware in a somewhat non-standard way, potentially harmful to the hardware. Though it has never been observed so far, theoretically you can nuke your parallel port!
+    The software and procedures are provided "AS IS" - I disclaim liability for any damage to your battery, your parallel port, your health, or any other damage caused or implied by the use thereof. You have been warned.
+ 
+ To sum up, the whole reset workaround procedure should look like this:
+
+    *Start Linux with i2c-pport and the other modules.
+    *Check the "actual capacity" value via the external SMBus connector of your battery and the read_batt util. Disconnect the SMBus probe from your PC after that.
+    *Disconnect the gas gauge PCB from the cells in the pack (perhaps replacing the cells at the same time).
+    *Attach the parallel port I2c probe to the 24c01.
+    *Attach the probe to your parallel port.
+    *Tamper the 24c01 - either using a dedicated util writing the right memory places, or using the generic eeprom read/write util and a hexa editor to edit the EEPROM image (e.g., the one in Midnight Commander - called using F3 F4).
+    *Disconnect the probe from the PC and unsolder it from the 24c01.
+    *Reconnect the battery cells to the gas gauge PCB.
+    *Check the "actual capacity" value via the external SMBus connector and the read_batt util. You should see a change.
+    *Run the battery through two or three full charge cycles in the notebook.
+
+http://frantisek.rysanek.sweb.cz/battery.html
