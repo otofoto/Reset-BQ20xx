@@ -1,0 +1,11 @@
+
+      .-----._,-----.
+    ==| O           |== +5V     (= keyboad connector PS/2 MiniDIN6 pin 4)
+      |             |
+    ==|             |==             (GND = printer port Canon DSUB25 pin 18)
+      |    24C02    |                   
+    ==|             |== SCL     (= printer port Canon DSUB25 pin 16)
+      |             |
+GND ==|             |== SDA     (= printer port Canon DSUB25 pin 14)
+      `-------------'
+

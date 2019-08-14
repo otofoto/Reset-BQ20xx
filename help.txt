@@ -1,0 +1,349 @@
+About this CD
+=============
+
+The system booting from this CD is a minimalistic Linux,
+based on RedHat 8.0.
+It contains many system utils and can be used as a rescue
+CD for general Linux distributions.
+
+The CD starts with six consoles open, accessible via
+ALT+F1 to ALT+F6. There's no login prompt - all the
+six consoles are started with a straight root shell.
+Only the first console runs the battery refurbishment
+wrapper script - the five remaining consoles offer
+plain bash prompt.
+
+The root directory is running off a ramdisk and is
+therefore writeable. The CD is mounted under /usr
+- therefore, /usr is read-only. The /bin and /sbin
+directories are symlinks to /usr/bin and /usr/sbin
+and are therefore read-only, too.
+You can put your own stuff in /var or /tmp.
+
+The i2c/battery stuff is in /usr/battery - apart from
+the binaries, there's C source code for all the utils
+and there's a Makefile. Feel free to hack it in any
+way you want. Feel free to run the utils by hand
+if the scripted options don't satisfy your needs.
+
+The dump files from the `eeprom' util are stored
+in /var/battery.
+
+If you want to transfer files to some non-volatile
+media, you can always mount a floppy or a system
+hard disk - the Kernel should be able to mount
+MSDOS FAT partitions from FAT12 to FAT32/VFAT,
+EXT2, EXT3 and minix.
+
+
+About smart battery controller IC's (AKA gas gauge IC's)
+========================================================
+
+There's a standard called Smart Battery Subsystem (SBS).
+It says that a battery pack in a notebook shall contain
+a Smart Battery controller chip (the "gas gauge"), there
+should be a Smart Charger in the notebook, and the 
+notebook itself should have a host bridge to talk to
+one or multiple smart batteries and smart chargers.
+
+All the smart devices are chatting among themselves
+over a bus called the SMBus (the System Management Bus).
+The SMBus is a variation of the Philips I2C, originating
+in consumer electronics - a two-wire (plus common ground)
+multi-master serial bus, rather slow and without galvanic
+insulation, allowing chips on one board to talk to each
+other in a uniform way, especially for the purpose of
+microprocessor control (so that the microprocessor can
+control various devices in the piece of equipment using 
+just two I/O pins and a uniform bus protocol).
+
+In I2C, the two live wires are called SDA (Serial DAta)
+and SCL (Serial CLock). In SMBus, they're called SMBD
+(SMBus Data) and SMBC (SMBus Clock).
+
+The SMBus is otherwise present on the motherboards of
+modern PC's, where it allows programs running on the
+main CPU to talk to a number of devices - temperature
+and fan control sensors, bus/CPU clock synthesizer IC's,
+the ID EPROMs in RAM DIMMs etc.
+
+There is a general-purpose Linux implementation of
+I2C/SMBus, consisting of a basic "i2c" drivers package
+and a "utils" package called lm_sensors at
+
+   http://www.lm-sensors.nu
+
+It supports a number of I2C-to-PC bus adapters.
+Many north bridges in PC chipsets have an SMBus port
+that's accessible via drivers in the operating system,
+the same applies to many TV/Radio tuner cards.
+There are dedicated I2C interface boards etc.
+
+Unfortunately, even in notebooks that have an SMBus-capable
+chipset, the battery SMBus is usually different from the
+"system" SMBus. The battery SMBus is either not accessible
+from the operating system or at least in a completely
+obscure and proprietary way (see e.g. the Compaq notebooks
+with the battery SMB being connected to the keyboard
+controller MCU).
+
+The most straightforward way to talk to your smart battery
+is via some external I2C/SMBus adapter that can be handled
+by Linux i2c/lm_sensors.
+Perhaps the simplest i2c adapter available is the
+"primitive parallel port i2c adapter", connecting to the
+Canon DSUB25F printer connector. All you need is a Canon
+DSUB25M, three wires and three pieces of brass to serve
+as battery contacts - and a soldering iron. This is the
+wiring description, quoted from the documentation of
+the i2c-pport driver:
+
+SDA - connect to pin 14 (Auto Linefeed)
+SCL - connect to pin 16 (Initialize Printer)
+GND - connect to pin 18-25
+
+If you need to tap the EEPROM IC directly, you will
+also need +5V to feed it - I suggest to take it
+from pin 4 in a PS/2 keyboard connector.
+
+I also recommend that you make two separate plugs:
+- one for the external SMBus, with brass contacts
+  that fit into the pack's female connector,
+- and another one for the EEPROM, this one with
+  thin enamel wire "pigtails" for easy wiretapping.
+
+You'll need to do a bit of investigation to find
+the right way to hook up your cables to the external
+SMBus of the battery pack (via the pack's external
+connector). Each battery model is different. 
+Using a datasheet for your IC and an ohm-meter, try
+to find out which connector pins correspond to your
+gas gauge IC's SDA and SCL pins.
+The common ground is the battery pack ground.
+
+See /usr/battery/schematic.txt for a way to wiretap
+the serial EEPROM IC.
+
+See the hardware book (http://www.hardwarebook.net)
+for PC connector drawings and pinouts:
+http://www.hardwarebook.net/connector/userinput/keyboardpc6.html
+http://www.hardwarebook.net/connector/parallel/parallelpc.html
+
+See the PNG images and data sheets enclosed in /usr/battery/
+on this CD for more inspiration.
+
+Most SMBus gas gauge IC's use an external I2C EEPROM
+(AKA CMOS Flash) to store their data that needs to be
+non-volatile. This external EEPROM IC (usually a 24C02
+or 24C01) is hooked up to the gas gauge IC via a private
+I2C bus, that is not accessible from the outer SMBus
+port of the battery pack. In other words, there are 
+two I2C/SMBus busses in the battery pack: one outbound,
+to the notebook system, and another one private, that's
+supposed to be hidden from the outside world.
+
+During battery refurbishments, you need to reset the
+gas gauge chip - to make it re-learn the battery capacity
+upwards, rather than downwards.
+
+Some gas gauge chips can be reset using a software command
+applied via the external SMBus, perhaps with the help of a
+power-cycle applied to the gas gauge IC (disconnect and
+reconnect the cells after the software reset).
+Some gas gauge chips can only be fooled into relearning the
+refurbished capacity by overwriting their "actual capacity"
+value in the external EEPROM. In such cases, you need to
+wiretap the EEPROM IC itself, which might turn out to be
+a bit of a fine microscopic surgery - unless you have an
+in-circuit attacheable socket, you need to solder
+thin enamel wires to the legs of the EEPROM IC.
+
+Either way, you will need documentation for the gas gauge
+IC. BQ chips are particularly well documented - this CD
+has dedicated utils for the BQ2092 and the BQ2040,
+and a general-purpose I2C EEPROM-reading/writing util
+that can be used for other chips as well, if you know
+exactly what you're doing.
+There are battery packs equipped with gas-gauge circuits
+build around general-purpose MCU's that are undocumented
+by virtue - the only standard that they must comply to is
+the SBS, which means that they have the standard
+SBS commands/registers visible through the outbound SMBus.
+
+RESET is not an SBS-standardized operation.
+
+If your gas gauge chip is not documented, you can still
+try to guess the right memory position in the external
+I2C EEPROM, if there is one, by comparing the SBS registers
+dump with the EEPROM dump. Never tried that, though.
+
+I can even imagine a brute-force hacking approach - but
+you'd need to combine two I2C busses on one primitive parallel
+port (can be done, apparently) and to add a computer-controlled
+power switch to power-cycle the gas gauge IC after each
+hacking attempt...
+
+It seems that the BQ2092 can be reset in software (combined
+with a power-cycle to the gas gauge IC).
+It seems that the BQ2040 can not be reset in software, not
+even after the write lock is removed via an EEPROM hack.
+It seems that the BQ2040 responds well to the "actual capacity"
+EEPROM hack.
+I don't have information about any other ICs.
+
+One more note about hacking the EEPROM directly:
+As the gas gauge chip only provides power supply to the
+EEPROM when it needs to talk to it, you need to tap its
+Ucc+ line too, and feed it from your computer's +5V rail.
+I recommend the +5V line available at pin4 of a PS/2 keyboard
+socket.
+While you're talking directly to the EEPROM, you'd better
+keep the gas gauge IC powered off, to prevent it from
+intervening.
+It seems that the BQ2040 doesn't object against having
+its EEPROM PWR pin pulled high externally - it doesn't
+blow and it doesn't draw any current under such conditions.
+
+
+Tools available on the CD
+=========================
+The things below are largely based on sample code from the
+lm_sensors and i2c packages. Nothing is written by me from
+scratch.
+
+- reset-bq2092   - a regular reset of the BQ2092
+
+- reset-bq2040   - a regular reset of the BQ2040 (defunct?)
+
+- bq2040_capacity - an EEPROM hack for the BQ2040 
+  Sets the "actual capacity" to a user-supplied value
+  and can optionally remove the write-protect lock.
+
+  Run with the '-h' parameter to get more help.
+
+- read_batt      - dumps the standard Smart Battery registers
+  From here, you can read what the gas gauge thinks about the battery.
+  This can be used with any SBS-compliant gas-gauge with
+  a two-wire SMBus/I2C.
+
+- eeprom         - reads or writes a 24Cxx eeprom
+
+  Run with the '-w' parameter to WRITE the EEPROM.
+  Run with the '-h' parameter to get more help.
+  
+- mc and vim
+- many other UNIX command-line tools
+
+Please note that the reset command and the EEPROM memory map
+are different between the BQ2092 and the BQ2040, let alone
+other chips - you must not use the dedicated utils (those with
+chip names in them) for other IC's without modification
+in the source code and a recompile.
+
+
+When it doesn't work
+====================
+
+I have noticed that some parallel ports don't work.
+In such cases, all you get is "i2c transaction failed".
+The bit-banging doesn't get through to the battery or back.
+
+To check if your i2c-pport essentially works on the hardware
+or not, connect your battery's external connector to the
+parallel port adapter and choose the "SBS registers dump"
+from the menu. If you get some data, your parallel port
+hardware is viable for I2C traffic. If you get a million
+lines saying "i2c transaction failed", try some other PC.
+Especially notebooks PC's seem to be quite tolerant. 
+
+The "primitive parallel port i2c adapter" doesn't use
+the port in exactly the standard way :) Essentially, it's
+doing *input* on the port in an out-only configuration
+(with the SDA/SCL pins not tri-stated). 
+
+Most modern parallel ports (probably all in machines that
+will be able to boot this CD) can be switched to several
+different modes of operation in the BIOS Setup - the most
+common modes are:
+- Standard (or SPP) - the 8 data pins are out-only
+- Bidirectional (not quite a standard mode, whatever it is)
+- EPP (can be switched to bidirectional mode in a standard way)
+- ECP (addressing mode, bidirectional, DMA-capable)
+Some provide hardware can even do different versions of
+EPP/ECP, the ECP can use different DMA channels etc.
+
+These are my particular results:
+1) Compaq Presario 1622 notebook, Pentium233MMX,
+   Intel TX chipset (82371AB ISA bridge):
+     I2C works in "standard" and "bidirectional" mode
+
+2) noname vanilla desktop PC, Athlon XP 1700+,
+   VIA KT333 (VT8233A ISA bridge):
+     I2C doesn't work in any mode (SPP/EPP/ECP)
+
+3) Acer TravelMate 270 notebook, P4 @ 1.4 GHz,
+   SiS chipset (SiS 85C503/5513 ISA bridge):
+     I2C works in "standard", "bidirectional" and ECP mode
+
+4) noname vanilla desktop PC, Pentium-S @ 225 MHz
+   Intel VX Natoma/Triton II chipset (82371SB ISA bridge)
+      I2C works in "normal" mode
+
+5) Advantech industrial processor board, P4 @ 2.4 GHz,
+   Intel 845G/GL chipset (82201 ISA bridge)
+      I2C works in "normal" mode (different from "SPP"!?)
+
+6) noname dual-P3 server, 2x PIII @ 1.4 GHz
+   ServerWorks chipset (OSB4 ISA bridge, W83977 I/O)
+      My i386 refurbishment CD doesn't finish booting in
+      the first place, it looks like a glibc incompatibility.
+      When booted from a hard disk with i586 libraries,
+      I2C doesn't work in any mode.
+
+To get to know your chipset, switch to another console
+(e.g., using ALT+F2) and type 'lspci <ENTER>'. This
+will give you a listing of devices visible on the PCI
+bus (if you do have a PCI bus, obviously).
+
+
+Hints for your own development
+==============================
+If you need to compile the i2c/lm_sensors for a different
+kernel, always disable the stock kernel's i2c support
+and get a recent version of the i2c package from the
+lm_sensors website at http://www.lm-sensors.nu
+Unless you know what you're doing.
+
+VIn 2.4 kernels and i2c-2.7.0, you have to turn the entire
+parellel port support off to make the i2c-pport work.
+If memory serves, in 2.2 kernels and i2c-2.6.4 you could
+(or had to?) leave the basic parallel port support compiled
+in. The tools on this CD compile against both.
+
+Feel free to hack any of the utils from this CD to suit
+your needs. The license is GPL.
+
+If you want to modify the CD, feel free - in Linux, copy
+its contents to some directory on your hard drive (use
+`cp -dpR' or even `tar -czf' to keep the attributes),
+replace/add parts, and re-package the whole thing
+using mkisofs:
+
+mkisofs -o bootcd.iso -b isolinux/isolinux.bin -c isolinux/boot.cat \
+-no-emul-boot -boot-load-size 4 -boot-info-table -R -J -L /your/directory
+
+
+Maintainer contact
+==================
+The CD was put together by
+
+Frantisek Rysanek
+
+employed with:
+FCC Prumyslove Systemy s.r.o.
+SNP 8
+Usti nad Labem
+400 11
+Czech Republic
+
+Frantisek.Rysanek@post.cz
